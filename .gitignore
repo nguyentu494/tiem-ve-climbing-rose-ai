@@ -13,9 +13,6 @@ output.png
 venv/
 .env
 
-# Poetry
-poetry.lock
-
 # VSCode / IDE
 .vscode/
 .idea/
