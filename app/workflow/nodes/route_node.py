@@ -34,6 +34,8 @@ class RouteNode:
 
         content = re.sub(r"^```json\n|```$", "", content.strip(), flags=re.MULTILINE)
         
+        print("AI Content:", content)
+
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
@@ -73,6 +75,7 @@ class RouteNode:
             HumanMessage(content=messages),
         ])
 
+        print("Tool Result:", result)
 
         tool_call = result.tool_calls[0]
         tool_call['args']['state']['user_input'] = messages
@@ -86,6 +89,7 @@ class RouteNode:
         if result.tool_calls:
             # state = 
             final_result = self._tool_node.invoke([ai_msg])
+            print("Tool Result:", final_result)
 
             if(tool_call['name'] == "search_paintings_by_keyword"):
                 # Chuyển đổi kết quả từ công cụ thành định dạng mong muốn
@@ -145,6 +149,8 @@ class RouteNode:
             SystemMessage(content=order_instructions),
             HumanMessage(content=messages),
         ])
+
+        
 
         state.final_generation = generation.content if isinstance(generation, AIMessage) else generation
         return state

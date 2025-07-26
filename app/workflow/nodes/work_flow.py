@@ -4,12 +4,12 @@ from app.models.state import State
 from langgraph.checkpoint.memory import MemorySaver
 from app.models.extract_param import SearchParams
 from app.models.chat_request import ChatRequest
-# from app.database import RedisDatabase 
+from app.database import RedisDatabase 
 
 class FlowGraph:
     def __init__(self):
-        # self._redis_db = RedisDatabase()
-        # self._checkpointer = self._redis_db.connect()
+        self._redis_db = RedisDatabase()
+        self._checkpointer = self._redis_db.connect()
         
         nodes = RouteNode()
         graph_builder = StateGraph(state_schema=State)
@@ -39,8 +39,7 @@ class FlowGraph:
         graph_builder.add_edge("order", END)
         graph_builder.add_edge("generate", END)
 
-        # self._graph = graph_builder.compile(checkpointer=self._checkpointer)
-        self._graph = graph_builder.compile()
+        self._graph = graph_builder.compile(checkpointer=self._checkpointer)
 
     def __close__(self):
         self._redis_db.close()
@@ -77,9 +76,11 @@ class FlowGraph:
 
         result = self._graph.invoke(initial_state, config=config)
 
+        print("Final Generation:", result)
         return result['final_generation']
 
 if __name__ == "__main__":
     flow_graph = FlowGraph()
     # Example run
     result = flow_graph.run("Tìm tranh cô gái")
+    print(result)

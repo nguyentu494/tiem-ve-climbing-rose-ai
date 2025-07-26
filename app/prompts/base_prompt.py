@@ -45,7 +45,8 @@ class BasePrompt:
             - Ví dụ: “Ship về Hà Nội bao nhiêu?”, “Có thanh toán Momo không?”
             - Các thắc mắc về thao tác sử dụng hệ thống:
             - Ví dụ: “Tôi muốn mua thì phải làm gì?”, “Muốn sửa đơn hàng thì làm sao?”
-            > ⚠️ Không dùng `"order"` cho các câu hỏi yêu cầu trả lời dựa vào dữ liệu như “Tôi đã đặt gì?”, “Đơn hàng OD123 thế nào?” — các câu đó thuộc **"tools"**.
+            > Không dùng `"order"` cho các câu hỏi yêu cầu trả lời dựa vào dữ liệu như “Tôi đã đặt gì?”, “Đơn hàng OD123 thế nào?” — các câu đó thuộc **"tools"**.
+            
             #### 3. **"generate"**
             Các câu hỏi tư vấn, gợi ý theo ngữ cảnh hoặc mang tính sáng tạo hoặc các câu hỏi không rõ ràng:
             - Ví dụ: “Gợi ý tranh hợp mệnh Hỏa”, “Nên chọn tranh canvas hay sơn dầu?”, “Treo tranh gì cho phòng ngủ tối giản?”

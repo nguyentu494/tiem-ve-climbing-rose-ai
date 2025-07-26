@@ -7,3 +7,4 @@ class SearchParams(BaseModel):
     size: Optional[str] = None
     painting_id: Optional[str] = None
     limit: int = 10
+    category: Optional[str] = None

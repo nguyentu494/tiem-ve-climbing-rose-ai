@@ -23,6 +23,7 @@ class Chat:
             Bước trích xuất từ khóa tìm kiếm từ user_input và lưu vào state.
             """
 
+            print("User Input:", state.user_input)
 
             self._prompt.extract_keywords = self._prompt.extract_keywords.format(
                 question=state.user_input,
@@ -40,12 +41,19 @@ class Chat:
 
             return state
         
+        def validate_category(self, category: str) -> bool:
+            if not category:
+                return True
+            query = "SELECT 1 FROM categories WHERE category_code = %s AND is_active = true"
+            return bool(self._db.run(query, (category,)))
+        
         @tool
-        def search_paintings_by_keyword(state: State) -> list[dict]:
+        def search_paintings_by_keyword(state: State):
             """
-            Tìm kiếm tranh theo từ khóa đã trích xuất từ câu hỏi của người dùng.
+            Tìm kiếm tranh theo từ khóa, danh mục, giá và kích thước từ câu hỏi của người dùng.
             Trả về danh sách tranh phù hợp với các tiêu chí tìm kiếm.
-            """  
+            """
+            print("Search Params:", state)
             state = extract_keywords(state)
 
             if not state.search_params:
@@ -54,43 +62,51 @@ class Chat:
 
             search_params = state.search_params
 
+            # Truy vấn SQL tối ưu hóa
             query_template = """
-                SELECT * FROM paintings
+                SELECT p.*
+                FROM paintings p
+                LEFT JOIN categories c ON p.category_id = c.category_id
                 WHERE (
-                    {{ 'true' if keyword is none else 'false' }} 
+                    {{ 'true' if keyword is none else 'false' }}
                     OR EXISTS (
                         SELECT 1 FROM unnest(ARRAY{{ keyword }}) AS kw
-                        WHERE name ILIKE '%' || kw || '%'
-                        OR description ILIKE '%' || kw || '%'
+                        WHERE p.name ILIKE '%' || kw || '%'
+                        OR p.description ILIKE '%' || kw || '%'
                     )
                 )
-                AND ({{ 'true' if max_price is none else 'price <= ' + max_price|string }})
-                AND ({{ 'true' if size is none else "size = '" ~ size ~ "'" }})
-                ORDER BY created_at DESC
+                AND ({{ 'true' if max_price is none else 'p.price <= ' + max_price|string }})
+                AND ({{ 'true' if size is none else "p.size = '" ~ size ~ "'" }})
+                AND ({{ 'true' if category is none else "c.category_code = '" ~ category ~ "'" }})
+                ORDER BY p.created_at DESC
                 LIMIT {{ limit }};
             """
 
-            
+            if search_params.category and not self.validate_category(search_params.category):
+                search_params.category = None
 
             template = Template(query_template)
             query = template.render(
-                keyword=search_params.keyword,  # nếu không có thì truyền None
+                keyword=search_params.keyword if search_params.keyword else None,
                 max_price=search_params.max_price,
-                size= search_params.size,
-                limit=search_params.limit
+                size=search_params.size,
+                category=search_params.category,
+                limit=search_params.limit or 10
             )
 
+
+            print("Query:", query)
 
             try:
                 paintings = self._db.run(query)
                 if not paintings:
-                    return "Không tìm thấy tranh nào phù hợp với yêu cầu của bạn."
-                else:
-                    return paintings
+                    state.final_generation = "Không tìm thấy tranh nào phù hợp với yêu cầu của bạn."
+                    return state
+                return paintings
             except Exception as e:
                 state.final_generation = "Đã xảy ra lỗi khi tìm kiếm tranh. Vui lòng thử lại sau."
                 state.error.append(str(e))
-                return str(e)
+                return state
 
         
         @tool
@@ -156,8 +172,33 @@ class Chat:
                 state.error.append(str(e))
 
             return state
+        
+        @tool
+        def get_category_available(state: State) -> State:
+            """
+            Tìm kiếm thông tin các loại tranh, danh mục hiện có.
+            """  
+            
+            template_query = """
+                SELECT c.category_id, c.description, c.image_url, c.name, c.category_code
+                FROM categories c
+                WHERE c.is_active = true
+                ORDER BY c.created_at ASC
+            """
+            
+            try:
+                get_category_available = self._db.run(template_query)
+                if not get_category_available:
+                    return "Hiện tại không có danh mục nào."
+                else:
+                    return get_category_available
+            except Exception as e:
+                state.final_generation = "Đã xảy ra lỗi khi lấy thông tin danh mục."
+                state.error.append(str(e))
 
-        self._tools = [search_paintings_by_keyword, get_order_instructions, get_coupons_available]
+            return state
+
+        self._tools = [search_paintings_by_keyword, get_order_instructions, get_coupons_available, get_category_available]
         self._tool_node = ToolNode(self._tools)
         self.test_tools = search_paintings_by_keyword
 
