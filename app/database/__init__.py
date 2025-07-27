@@ -3,7 +3,9 @@ import os
 from langchain_community.utilities import SQLDatabase
 from langchain_community.tools.sql_database.tool import QuerySQLDatabaseTool
 from langgraph.checkpoint.redis import RedisSaver
-from pinecone import Pinecone
+from pinecone import Pinecone, ServerlessSpec
+from langchain_pinecone import PineconeVectorStore
+from app.configs.model_config import HuggingFace
 
 load_dotenv()
 
@@ -61,17 +63,32 @@ class PineconeDatabase:
         self._api_key = os.getenv("PINECONE_API_KEY")
         self._pc = Pinecone(api_key=self._api_key)
         self._index_name = "climbing-rose-index"
+        self._embeddings = HuggingFace().embeddings()
 
-    def get_index(self):
-        
-        return self._index
+    def connect(self):
+        index = self._pc.Index(self._index_name)
+        return PineconeVectorStore(
+            index=index,
+            embedding=self._embeddings,
+            distance_strategy="cosine",
+        )
+    
+    def create_index(self):
+        if not self._pc.list_indexes():
+            self._pc.create_index(
+                name=self._index_name,
+                dimension=768,  
+                metric="cosine",
+                spec=ServerlessSpec(cloud="aws", region="us-east-1")
+            )
+        return self._pc.Index(self._index_name)
     
 # def test_connection():
-#     db = PostgresDatabase().get_db()
-#     query = "SELECT * FROM paintings LIMIT 5;"
-#     result = db.run(query)
+#     db = PineconeDatabase()
+#     db.create_index()
+#     db = db.connect()
 #     print("✅ Kết nối thành công! Dữ liệu từ database:")
-#     print(result)
+#     print(db)
 
 # if __name__ == "__main__":
 #     test_connection()
