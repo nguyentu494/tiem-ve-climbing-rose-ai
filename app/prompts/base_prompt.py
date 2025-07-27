@@ -36,17 +36,39 @@ class BasePrompt:
             - **Tạo đơn hàng và tra cứu đơn đã đặt**:
             - Ví dụ: “Tôi muốn đặt bức này”, “Đơn hàng OD456 đã giao chưa?”
 
-            #### 2. **"order"**
-            Chỉ dùng cho các câu hỏi **hướng dẫn quy trình**, không truy xuất dữ liệu:
+            #### 2. **order**
 
-            - Hỏi cách mua tranh, quy trình thanh toán, bước đặt hàng:
-            - Ví dụ: “Làm sao để đặt hàng?”, “Thanh toán như thế nào?”, “Quy trình giao hàng ra sao?”
-            - **Tính phí vận chuyển, kiểm tra phương thức thanh toán** (dựa trên dữ liệu):
-            - Ví dụ: “Ship về Hà Nội bao nhiêu?”, “Có thanh toán Momo không?”
-            - Các thắc mắc về thao tác sử dụng hệ thống:
-            - Ví dụ: “Tôi muốn mua thì phải làm gì?”, “Muốn sửa đơn hàng thì làm sao?”
-            > Không dùng `"order"` cho các câu hỏi yêu cầu trả lời dựa vào dữ liệu như “Tôi đã đặt gì?”, “Đơn hàng OD123 thế nào?” — các câu đó thuộc **"tools"**.
-            
+            Áp dụng cho các câu hỏi liên quan đến:
+            - **Hướng dẫn sử dụng sản phẩm**
+            - **Quy trình thao tác trên hệ thống**
+            - **Thông tin tĩnh về sản phẩm, cách dùng, cách đặt hàng, cách thanh toán**
+
+            Dấu hiệu nhận biết:
+            - Câu hỏi **không yêu cầu truy xuất dữ liệu động** (như lịch sử đơn hàng, trạng thái cụ thể, v.v.)
+            - Mang tính **hướng dẫn**, **giải thích quy trình**, hoặc **mô tả tính năng của website/sản phẩm**
+
+            Ví dụ điển hình:
+            - **Câu hỏi về sản phẩm:**
+            - “Tranh có đi kèm cọ không?”
+            - “Cách tô tranh như thế nào?”
+            - “Treo tranh sau khi tô thì làm sao?”
+
+            - **Câu hỏi về quy trình đặt hàng/thanh toán:**
+            - “Làm sao để đặt hàng?”
+            - “Thanh toán như thế nào?”
+            - “Ship về Hà Nội bao nhiêu?”
+
+            - **Câu hỏi về cách sử dụng hệ thống website:**
+            - “Xem lại đơn hàng ở đâu?”
+            - “Làm sao để sửa đơn hàng?”
+            - “Tôi muốn biết tranh tôi đã chọn có thể thay đổi không?”
+
+            ⚠️ **Không áp dụng cho các truy vấn yêu cầu thông tin cá nhân, lịch sử, đơn hàng cụ thể** — những câu đó sẽ được phân loại vào `"tools"`.
+
+            Ví dụ loại **KHÔNG thuộc `order`**:
+            - “Tôi đã đặt gì?”
+            - “Trạng thái đơn hàng OD123 là gì?”
+
             #### 3. **"generate"**
             Các câu hỏi tư vấn, gợi ý theo ngữ cảnh hoặc mang tính sáng tạo hoặc các câu hỏi không rõ ràng:
             - Ví dụ: “Gợi ý tranh hợp mệnh Hỏa”, “Nên chọn tranh canvas hay sơn dầu?”, “Treo tranh gì cho phòng ngủ tối giản?”
@@ -155,6 +177,9 @@ class BasePrompt:
             ### THÔNG TIN NGỮ CẢNH ĐOẠN CHAT:
             {history}
 
+            ### NGỮ CẢNH WEB:
+            {context}
+
             ### CÂU HỎI:
             {question}
 
@@ -222,18 +247,8 @@ class BasePrompt:
             ### THÔNG TIN NGỮ CẢNH ĐOẠN CHAT:
             {history}
 
-            ### Phong cách trả lời:
-            - Giọng văn nhẹ nhàng, dễ hiểu, lịch sự và mang cảm giác thân thiện.
-            - Trình bày rõ ràng theo từng bước nếu có thể (dùng tiêu đề hoặc danh sách).
-            - Luôn phản hồi bằng **Tiếng Việt** và sử dụng **Markdown** để định dạng nội dung dễ đọc.
-            - Nếu người dùng hỏi về các bước đặt hàng, hãy mô tả quy trình cụ thể từ chọn tranh đến khi nhận được hàng.
-            - Nếu người dùng hỏi về thanh toán hoặc vận chuyển, cung cấp thông tin phù hợp
-            - Nếu người dùng hỏi về các hình thức thanh toán, hãy liệt kê các phương thức có sẵn.
-            - Nếu người dùng hỏi về phí giao hàng, hãy cung cấp thông tin về phí giao hàng và đơn vị vận chuyển.
-            - Nếu không đủ dữ liệu để tư vấn chính xác, hãy nhẹ nhàng hướng người dùng liên hệ CSKH theo trang facebook.
-            - Nếu ngữ cảnh được cung cấp hãy xem xét kỹ để trả lời chính xác.
-
-            ---
+            ### NGỮ CẢNH WEB:
+            {context}
 
             ### DỮ LIỆU DÀNH CHO BẠN:
 
@@ -242,6 +257,19 @@ class BasePrompt:
             - {delivery_info} – thời gian giao hàng trung bình (ví dụ: 2-4 ngày làm việc)
             - {order_steps} – mô tả các bước đặt hàng từ A-Z
 
+      
+
+            ### Phong cách trả lời:
+            - Giọng văn nhẹ nhàng, dễ hiểu, lịch sự và mang cảm giác thân thiện.
+            - Trình bày rõ ràng theo từng bước nếu có thể (dùng tiêu đề hoặc danh sách).
+            - Trả lời đầy đủ thông tin cần thiết, tránh bỏ sót bước nào trong quy trình, không lan man.
+            - Luôn phản hồi bằng **Tiếng Việt** và sử dụng **Markdown** để định dạng nội dung dễ đọc.
+            - Nếu người dùng hỏi về các bước đặt hàng, hãy mô tả quy trình cụ thể từ chọn tranh đến khi nhận được hàng.
+            - Nếu người dùng hỏi về thanh toán hoặc vận chuyển, cung cấp thông tin phù hợp
+            - Nếu người dùng hỏi về các hình thức thanh toán, hãy liệt kê các phương thức có sẵn.
+            - Nếu người dùng hỏi về phí giao hàng, hãy cung cấp thông tin về phí giao hàng và đơn vị vận chuyển.
+            - Nếu không đủ dữ liệu để tư vấn chính xác, hãy nhẹ nhàng hướng người dùng liên hệ CSKH theo trang facebook.
+            - Nếu ngữ cảnh được cung cấp hãy xem xét kỹ để trả lời chính xác.
             ---
 
             ### HƯỚNG DẪN TRẢ LỜI:
@@ -250,13 +278,7 @@ class BasePrompt:
             - Giải thích theo từng phần: đặt hàng – thanh toán – giao hàng (nếu cần).
             - Nếu không đủ dữ liệu để tư vấn chính xác, hãy nhẹ nhàng hướng người dùng liên hệ CSKH.
         """
-        self.order_instructions = self.order_instructions.format(
-            payment_methods=self.define_order.payment_methods,
-            shipping_policy=self.define_order.shipping_policy,
-            delivery_info=self.define_order.delivery_info,
-            order_steps=self.define_order.order_steps,
-            history=[]
-        )
+
 
         self.extract_keywords = """
             Bạn là một trợ lý AI giúp người dùng tìm kiếm tranh nghệ thuật trong cửa hàng. 

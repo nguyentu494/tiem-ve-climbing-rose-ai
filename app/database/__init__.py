@@ -35,28 +35,28 @@ class PostgresDatabase:
             return f"❌ Lỗi khi thực thi truy vấn: {e}"
 
 
-class RedisDatabase:
-    def __init__(self):
-        self._redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        self._saver = None
+# class RedisDatabase:
+#     def __init__(self):
+#         self._redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+#         self._saver = None
 
-    def connect(self):
-        if not self._saver:
-            self._saver = RedisSaver.from_conn_string(self._redis_url).__enter__()
+#     def connect(self):
+#         if not self._saver:
+#             self._saver = RedisSaver.from_conn_string(self._redis_url).__enter__()
             
-            self._saver.setup()
-        return self._saver
+#             self._saver.setup()
+#         return self._saver
     
-    def delete_by_thread(self, thread_id: str):
-        prefixes = ["checkpoint:", "checkpoint_blob:", "checkpoint_write:"]
-        for prefix in prefixes:
-            key = f"{prefix}{thread_id}"
-            self._redis.delete(key)
+#     def delete_by_thread(self, thread_id: str):
+#         prefixes = ["checkpoint:", "checkpoint_blob:", "checkpoint_write:"]
+#         for prefix in prefixes:
+#             key = f"{prefix}{thread_id}"
+#             self._redis.delete(key)
 
-    def close(self):
-        if self._saver:
-            self._saver.__exit__(None, None, None)
-            self._saver = None
+#     def close(self):
+#         if self._saver:
+#             self._saver.__exit__(None, None, None)
+#             self._saver = None
 
 class PineconeDatabase:
     def __init__(self):

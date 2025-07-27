@@ -41,12 +41,6 @@ class Chat:
 
             return state
         
-        def validate_category(self, category: str) -> bool:
-            if not category:
-                return True
-            query = "SELECT 1 FROM categories WHERE category_code = %s AND is_active = true"
-            return bool(self._db.run(query, (category,)))
-        
         @tool
         def search_paintings_by_keyword(state: State):
             """
@@ -66,7 +60,6 @@ class Chat:
             query_template = """
                 SELECT p.*
                 FROM paintings p
-                LEFT JOIN categories c ON p.category_id = c.category_id
                 WHERE (
                     {{ 'true' if keyword is none else 'false' }}
                     OR EXISTS (
@@ -77,20 +70,15 @@ class Chat:
                 )
                 AND ({{ 'true' if max_price is none else 'p.price <= ' + max_price|string }})
                 AND ({{ 'true' if size is none else "p.size = '" ~ size ~ "'" }})
-                AND ({{ 'true' if category is none else "c.category_code = '" ~ category ~ "'" }})
                 ORDER BY p.created_at DESC
                 LIMIT {{ limit }};
             """
-
-            if search_params.category and not self.validate_category(search_params.category):
-                search_params.category = None
 
             template = Template(query_template)
             query = template.render(
                 keyword=search_params.keyword if search_params.keyword else None,
                 max_price=search_params.max_price,
                 size=search_params.size,
-                category=search_params.category,
                 limit=search_params.limit or 10
             )
 

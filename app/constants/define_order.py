@@ -1,8 +1,16 @@
 class DefineOrder:
     def __init__(self):
         self.payment_methods = """
-            - **Chuyển khoản ngân hàng Việt Nam**:
-            - **Chuyển khoản ngân hàng Nhật Bản**
+        - **Chuyển khoản ngân hàng Việt Nam**:
+        - Ngân hàng: Sacombank  
+        - Số tài khoản: 060296156232  
+        - Chủ tài khoản: TRAN THI THUY VY  
+        - [Mã QR thanh toán](#) (quét bằng app ngân hàng hỗ trợ Napas 247)
+
+        - **Chuyển khoản ngân hàng Nhật Bản**:
+        - Ngân hàng: Yucho Ginko (ゆうちょ銀行)  
+        - Số tài khoản: 15540-31023011  
+        - Tên tài khoản: チェン スアン ティン
         """
 
         self.shipping_policy = """

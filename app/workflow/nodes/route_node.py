@@ -7,6 +7,8 @@ from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
 from app.workflow.tools.chat_tools import Chat
 from langchain_core.messages import AIMessage, ToolCall
 from app.models.extract_param import SearchParams
+from app.constants.define_order  import DefineOrder
+from app.database import PineconeDatabase
 import re
 import json
 import ast
@@ -20,6 +22,8 @@ class RouteNode:
             self._chat = Chat()
             self._llm_bind_tools = self._chat.get_llm_binds_tools()
             self._tool_node = self._chat.get_tool_node()
+            self._vector_store = PineconeDatabase().connect()
+            self._define_order = DefineOrder()
         except Exception as e:
             raise ModelNotFoundException(f"Failed to initialize chat models: {str(e)}")
 
@@ -63,8 +67,8 @@ class RouteNode:
         messages = state.user_input
 
         tool_prompt = self._prompt.using_tools_prompt.format(
-            user_id=state.user_id
-            , user_input=messages
+            user_id=state.user_id,
+            user_input=messages
         )
 
         if not messages or not isinstance(messages, str) or messages.strip() == "":
@@ -75,7 +79,6 @@ class RouteNode:
             HumanMessage(content=messages),
         ])
 
-        print("Tool Result:", result)
 
         tool_call = result.tool_calls[0]
         tool_call['args']['state']['user_input'] = messages
@@ -124,8 +127,11 @@ class RouteNode:
     def generate(self, state: State):
         messages = state.user_input
 
+        self.similarity_search(state)
+
         prompt_generation = self._prompt.generate_prompt.format(
             question=messages,
+            context=state.context,
             history=state.chat_history,
         )
 
@@ -140,17 +146,36 @@ class RouteNode:
     def order(self, state: State):
         messages = state.user_input
 
+        self.similarity_search(state)
+
         order_instructions = self._prompt.order_instructions.format(
             history=[],
-            question=messages,
+            context=state.context,
+            payment_methods=self._define_order.payment_methods,
+            shipping_policy=self._define_order.shipping_policy,
+            delivery_info=self._define_order.delivery_info,
+            order_steps=self._define_order.order_steps,
         )
+
 
         generation = self._llm.invoke([
             SystemMessage(content=order_instructions),
             HumanMessage(content=messages),
         ])
 
-        
-
         state.final_generation = generation.content if isinstance(generation, AIMessage) else generation
+        return state
+
+    def similarity_search(self, state: State):
+        """
+        Tìm kiếm với keyword filtering để tăng hiệu quả (áp dụng cho Pinecone).
+        """
+
+        docs = self._vector_store.similarity_search(
+            query=state.user_input,
+            k=3
+        )
+
+        context = "\n".join([doc.page_content for doc in docs])
+        state.context = context
         return state
