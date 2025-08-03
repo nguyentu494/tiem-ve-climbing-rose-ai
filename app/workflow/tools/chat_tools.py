@@ -98,7 +98,7 @@ class Chat:
 
         
         @tool
-        def get_order_instructions(state: State) -> State:
+        def get_order_instructions(state: State):
             """
             Tìm kiếm thông tin đơn hàng.
             """
@@ -133,7 +133,7 @@ class Chat:
             return state
 
         @tool
-        def get_coupons_available(state: State) -> State:
+        def get_coupons_available(state: State):
             """
             Tìm kiếm thông tin khuyến mãi hiện có.
             """
@@ -162,7 +162,7 @@ class Chat:
             return state
         
         @tool
-        def get_category_available(state: State) -> State:
+        def get_category_available(state: State):
             """
             Tìm kiếm thông tin các loại tranh, danh mục hiện có.
             """  

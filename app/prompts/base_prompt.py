@@ -44,7 +44,7 @@ class BasePrompt:
             - **Thông tin tĩnh về sản phẩm, cách dùng, cách đặt hàng, cách thanh toán**
 
             Dấu hiệu nhận biết:
-            - Câu hỏi **không yêu cầu truy xuất dữ liệu động** (như lịch sử đơn hàng, trạng thái cụ thể, v.v.)
+            - Câu hỏi **không yêu cầu truy xuất dữ liệu động** (như lịch sử đơn hàng, trạng thái cụ thể, các size shop có, v.v.)
             - Mang tính **hướng dẫn**, **giải thích quy trình**, hoặc **mô tả tính năng của website/sản phẩm**
 
             Ví dụ điển hình:
@@ -52,6 +52,8 @@ class BasePrompt:
             - “Tranh có đi kèm cọ không?”
             - “Cách tô tranh như thế nào?”
             - “Treo tranh sau khi tô thì làm sao?”
+            - "Tranh này có bao nhiêu kích thước?"
+            - "Có những size nào cho tranh?"
 
             - **Câu hỏi về quy trình đặt hàng/thanh toán:**
             - “Làm sao để đặt hàng?”

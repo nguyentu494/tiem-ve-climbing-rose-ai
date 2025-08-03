@@ -41,7 +41,9 @@ class RouteNode:
         print("AI Content:", content)
 
         try:
-            return json.loads(content)
+            cleaned = content.strip().lstrip('{').rstrip('}')
+            json_data = json.loads('{' + cleaned + '}')
+            return json_data
         except json.JSONDecodeError as e:
             raise InvalidInputException(f"Failed to parse AI response as JSON: {str(e)}")
     
