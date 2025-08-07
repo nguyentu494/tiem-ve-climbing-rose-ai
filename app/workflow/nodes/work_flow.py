@@ -4,12 +4,13 @@ from app.models.state import State
 from langgraph.checkpoint.memory import MemorySaver
 from app.models.extract_param import SearchParams
 from app.models.chat_request import ChatRequest
-# from app.database import RedisDatabase 
+from app.database import RedisDatabase 
 
 class FlowGraph:
     def __init__(self):
-        # self._redis_db = RedisDatabase()
-        # self._checkpointer = self._redis_db.connect()
+        self._redis_db = RedisDatabase()
+        self._checkpointer = self._redis_db.connect()
+        self._max_rounds = 4
         
         nodes = RouteNode()
         graph_builder = StateGraph(state_schema=State)
@@ -39,8 +40,9 @@ class FlowGraph:
         graph_builder.add_edge("order", END)
         graph_builder.add_edge("generate", END)
 
-        # self._graph = graph_builder.compile(checkpointer=self._checkpointer)
-        self._graph = graph_builder.compile()
+        self._graph = graph_builder.compile(checkpointer=self._checkpointer)
+
+        # self._graph = graph_builder.compile()
 
     def __close__(self):
         self._redis_db.close()
@@ -50,11 +52,30 @@ class FlowGraph:
         return self._graph.get_graph().draw_mermaid()
 
     def run(self, chat_request: ChatRequest):
+
+        thread_id = {
+            "configurable": {
+                "thread_id": chat_request.user_id,
+            }
+        }
+
+
+        # state.chat_history = 
+        saved_chat_history = self._checkpointer.get(thread_id) or {}
+        # print("Saved Chat History:", saved_chat_history)
+        channel_values = saved_chat_history.get("channel_values", {})
+        history = channel_values.get("chat_history", [])
+
+        if history:
+            history_trimmed = history[-(self._max_rounds*2):] if len(history) > self._max_rounds else history
+        else:
+            history_trimmed = []
+
         
         initial_state = State(
             chat_id=chat_request.chat_id,
             user_input=chat_request.user_input,
-            chat_history=[],
+            chat_history=history_trimmed,
             generation="",
             final_generation="",
             context=[],
@@ -70,15 +91,8 @@ class FlowGraph:
             )
         )
 
-        config = {
-            "configurable": {
-                "thread_id": chat_request.chat_id,
-            }
-        }
+        result = self._graph.invoke(initial_state, config=thread_id)
 
-        result = self._graph.invoke(initial_state, config=config)
-
-        print("Final Generation:", result)
         return result['final_generation']
 
 if __name__ == "__main__":

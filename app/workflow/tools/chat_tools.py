@@ -60,12 +60,16 @@ class Chat:
             query_template = """
                 SELECT p.*
                 FROM paintings p
+                LEFT JOIN category_painting ct on ct.painting_id = p.painting_id
+                INNER JOIN categories c on ct.category_id = c.category_id
                 WHERE (
                     {{ 'true' if keyword is none else 'false' }}
                     OR EXISTS (
                         SELECT 1 FROM unnest(ARRAY{{ keyword }}) AS kw
                         WHERE p.name ILIKE '%' || kw || '%'
                         OR p.description ILIKE '%' || kw || '%'
+                        OR c.name ILIKE '%' || kw || '%'
+                        OR c.description ILIKE '%' || kw || '%'
                     )
                 )
                 AND ({{ 'true' if max_price is none else 'p.price <= ' + max_price|string }})
@@ -171,7 +175,7 @@ class Chat:
                 SELECT c.category_id, c.description, c.image_url, c.name, c.category_code
                 FROM categories c
                 WHERE c.is_active = true
-                ORDER BY c.created_at ASC
+                ORDER BY c.created_at
             """
             
             try:
@@ -185,12 +189,38 @@ class Chat:
                 state.error.append(str(e))
 
             return state
+        
+        @tool
+        def get_size_available(state: State):
+            """
+            Tìm kiếm thông tin các kích thước tranh hiện có.
+            """
+            template_query = """
+                SELECT DISTINCT p.size
+                FROM paintings p
+                WHERE p.is_active = true
+                ORDER BY p.size
+            """
+            
+            try:
+                get_size_available = self._db.run(template_query)
+                if not get_size_available:
+                    return "Hiện tại không có kích thước nào."
+                else:
+                    return get_size_available
+            except Exception as e:
+                state.final_generation = "Đã xảy ra lỗi khi lấy thông tin kích thước tranh."
+                state.error.append(str(e))
 
-        self._tools = [search_paintings_by_keyword, get_order_instructions, get_coupons_available, get_category_available]
+            return state
+
+        self._tools = [search_paintings_by_keyword, get_order_instructions, get_coupons_available, get_category_available, get_size_available]
         self._tool_node = ToolNode(self._tools)
         self.test_tools = search_paintings_by_keyword
 
         self._llm_binds_tools = self._llm.bind_tools(self._tools)
+
+        
     
     def get_llm_binds_tools(self):
         return self._llm_binds_tools

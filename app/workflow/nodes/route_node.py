@@ -1,14 +1,13 @@
-from unittest import result
 from app.configs.model_config import Gemini
 from app.prompts.base_prompt import BasePrompt
 from app.models.state import State
 from app.exceptions.chat_exception import InvalidInputException, ModelNotFoundException, ToolExecutionException
 from langchain.schema.messages import AIMessage, HumanMessage, SystemMessage
 from app.workflow.tools.chat_tools import Chat
-from langchain_core.messages import AIMessage, ToolCall
-from app.models.extract_param import SearchParams
 from app.constants.define_order  import DefineOrder
-from app.database import PineconeDatabase
+from app.database import PineconeDatabase, PostgresDatabase
+from app.models.message import MessageRole
+from app.models import ChatMessage
 import re
 import json
 import ast
@@ -23,6 +22,7 @@ class RouteNode:
             self._llm_bind_tools = self._chat.get_llm_binds_tools()
             self._tool_node = self._chat.get_tool_node()
             self._vector_store = PineconeDatabase().connect()
+            self._postgres = PostgresDatabase()
             self._define_order = DefineOrder()
         except Exception as e:
             raise ModelNotFoundException(f"Failed to initialize chat models: {str(e)}")
@@ -96,31 +96,65 @@ class RouteNode:
             final_result = self._tool_node.invoke([ai_msg])
             print("Tool Result:", final_result)
 
-            if(tool_call['name'] == "search_paintings_by_keyword"):
-                # Chuyển đổi kết quả từ công cụ thành định dạng mong muốn
-                convert_prompt = self._prompt.search_paintings_prompt.format(
-                    tool_run=final_result,
-                    question=messages,
-                )
-            elif(tool_call['name'] == "order_painting"):
-                convert_prompt = self._prompt.order_prompt.format(
-                    tool_run=final_result,
-                    question=messages,
-                )
-            else:
-                convert_prompt = self._prompt.coupon_prompt.format(
-                    tool_run=final_result,
-                    question=messages,
-                )
+            match tool_call['name']:
+                case "search_paintings_by_keyword":
+                    convert_prompt = self._prompt.search_paintings_prompt.format(
+                        tool_run=final_result,
+                        question=messages,
+                    )
+                case "order_painting":
+                    convert_prompt = self._prompt.order_prompt.format(
+                        tool_run=final_result,
+                        question=messages,
+                    )
+                case "get_size_available":
+                    convert_prompt = self._prompt.size_prompt.format(
+                        tool_run=final_result,
+                        question=messages,
+                    )
+                case "get_category_available":
+                    convert_prompt = self._prompt.category_prompt.format(
+                        tool_run=final_result,
+                        question=messages,
+                    )
+                case "get_coupon_available":
+                    convert_prompt = self._prompt.coupon_prompt.format(
+                        tool_run=final_result,
+                        question=messages,
+                    )
+                case _:
+                    convert_prompt = self._prompt.default_prompt.format(
+                        tool_run=final_result,
+                        question=messages,
+                    )
+
 
             generation = self._llm.invoke([
                 SystemMessage(content=convert_prompt),
+                *state.chat_history,
                 HumanMessage(content=messages),
             ])
             
-
             state.final_generation = generation.content
+   
+            state.chat_history.append(HumanMessage(content=messages))
+            state.chat_history.append(generation)
 
+            if state.user_id and state.user_id.strip():
+                # chỉ khi user_id không None, không rỗng, không toàn khoảng trắng
+                chat_message_user = ChatMessage(
+                    user_id=state.user_id,
+                    role=MessageRole.USER,
+                    content=messages
+                )
+                self._postgres.save_message(chat_message_user)
+
+                chat_message_ai = ChatMessage(
+                    user_id=state.user_id,
+                    role=MessageRole.AI,
+                    content=state.final_generation
+                )
+                self._postgres.save_message(chat_message_ai)
             
         state.next_state = "end"
 
@@ -128,21 +162,45 @@ class RouteNode:
     
     def generate(self, state: State):
         messages = state.user_input
+        
 
         self.similarity_search(state)
 
         prompt_generation = self._prompt.generate_prompt.format(
             question=messages,
             context=state.context,
-            history=state.chat_history,
+            history=[],
         )
+
 
         generation = self._llm.invoke([
             SystemMessage(content=prompt_generation),
+            *state.chat_history,
             HumanMessage(content=messages),
         ])
 
         state.final_generation = generation.content if isinstance(generation, AIMessage) else generation
+
+        state.chat_history.append(HumanMessage(content=messages))
+        state.chat_history.append(generation)
+
+        if state.user_id and state.user_id.strip():
+            # chỉ khi user_id không None, không rỗng, không toàn khoảng trắng
+            chat_message_user = ChatMessage(
+                user_id=state.user_id,
+                role=MessageRole.USER,
+                content=messages
+            )
+            self._postgres.save_message(chat_message_user)
+
+            chat_message_ai = ChatMessage(
+                user_id=state.user_id,
+                role=MessageRole.AI,
+                content=state.final_generation
+            )
+            self._postgres.save_message(chat_message_ai)
+        
+
         return state
     
     def order(self, state: State):
@@ -151,7 +209,7 @@ class RouteNode:
         self.similarity_search(state)
 
         order_instructions = self._prompt.order_instructions.format(
-            history=[],
+            history=state.chat_history,
             context=state.context,
             payment_methods=self._define_order.payment_methods,
             shipping_policy=self._define_order.shipping_policy,
@@ -162,10 +220,31 @@ class RouteNode:
 
         generation = self._llm.invoke([
             SystemMessage(content=order_instructions),
+            *state.chat_history,
             HumanMessage(content=messages),
         ])
 
         state.final_generation = generation.content if isinstance(generation, AIMessage) else generation
+        state.chat_history.append(HumanMessage(content=messages))
+        state.chat_history.append(generation)
+
+
+        if state.user_id and state.user_id.strip():
+                # chỉ khi user_id không None, không rỗng, không toàn khoảng trắng
+            chat_message_user = ChatMessage(
+                user_id=state.user_id,
+                role=MessageRole.USER,
+                content=messages
+            )
+            self._postgres.save_message(chat_message_user)
+
+            chat_message_ai = ChatMessage(
+                user_id=state.user_id,
+                role=MessageRole.AI,
+                content=state.final_generation
+            )
+            self._postgres.save_message(chat_message_ai)
+
         return state
 
     def similarity_search(self, state: State):
@@ -181,3 +260,27 @@ class RouteNode:
         context = "\n".join([doc.page_content for doc in docs])
         state.context = context
         return state
+    
+    # def clarify_detector(self, state: State):
+    #     """
+    #     Phát hiện câu hỏi cần làm rõ và trả về thông tin cần thiết.
+    #     """
+    #     messages = state.user_input
+
+    #     clarify_prompt = self._prompt.clarify_prompt.format(
+    #         question=messages,
+    #         context=state.context,
+    #         history=[],
+    #     )
+
+    #     generation = self._llm.invoke([
+    #         SystemMessage(content=clarify_prompt),
+    #         *state.chat_history,
+    #         HumanMessage(content=messages),
+    #     ])
+
+    #     state.final_generation = generation.content if isinstance(generation, AIMessage) else generation
+    #     state.chat_history.append(HumanMessage(content=messages))
+    #     state.chat_history.append(generation)
+
+    #     return state    

@@ -14,10 +14,13 @@ class DefineOrder:
         """
 
         self.shipping_policy = """
+            - Hiển thị hình ảnh thông tin về chính sách vận chuyển dưới dạng Markdown.
+            [![Shipping Policy](https://res.cloudinary.com/dx0blzlhd/image/upload/v1754383893/lb491r3ncxsrxb5a6rj0.webp)]
             - Miễn phí vận chuyển toàn quốc cho đơn hàng từ 9000 yên trở lên hoặc đơn hàng có 10 trang size 20*20.
             - Với đơn hàng có tranh size 30*40 bạn sẽ được giảm giá 300 yên.
             - Với đơn hàng có tranh size 40*50 bạn sẽ được giảm giá 500 yên.
 	        (Lưu ý: Nhập mã mới được giảm giá)
+            
         """
 
         self.delivery_info = """

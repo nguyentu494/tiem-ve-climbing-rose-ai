@@ -6,6 +6,12 @@ from langgraph.checkpoint.redis import RedisSaver
 from pinecone import Pinecone, ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
 from app.configs.model_config import HuggingFace
+from langgraph.checkpoint.base import BaseCheckpointSaver 
+from sqlalchemy import inspect
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from app.models.message import ChatMessage
+from app.database.base import engine
 
 load_dotenv()
 
@@ -25,6 +31,9 @@ class PostgresDatabase:
             description="Use this tool to query the database"
         )
 
+        self._engine = engine
+        self._Session = sessionmaker(bind=self._engine)
+
     def get_db(self):
         return self._postgres
 
@@ -34,29 +43,54 @@ class PostgresDatabase:
         except Exception as e:
             return f"❌ Lỗi khi thực thi truy vấn: {e}"
 
+    def get_session(self):
+        return self._Session()
 
-# class RedisDatabase:
-#     def __init__(self):
-#         self._redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-#         self._saver = None
+    def save_message(self, message: ChatMessage):
+        print(f"Saving message: {message.content} with role {message.role} for user {message.user_id}")
+        session = self.get_session()
+        try:
+            session.add(message)
+            session.commit()
+        except SQLAlchemyError as e:
+            session.rollback()
+            raise RuntimeError(f"❌ Lỗi khi lưu message vào database: {e}")
+        finally:
+            session.close()
 
-#     def connect(self):
-#         if not self._saver:
-#             self._saver = RedisSaver.from_conn_string(self._redis_url).__enter__()
+    def test_connection(self):
+        try:
+            inspector = inspect(self._engine)
+            tables = inspector.get_table_names()
+            print(f"✅ Kết nối thành công. Có {len(tables)} bảng: {tables}")
+            print(f"✅ Kết nối thành công. Có {len(tables)} bảng.")
+            return tables
+        except Exception as e:
+            raise RuntimeError(f"❌ Không thể kiểm tra kết nối: {e}")
+
+
+class RedisDatabase:
+    def __init__(self):
+        self._redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        self._saver = None
+
+    def connect(self) -> BaseCheckpointSaver:
+        if not self._saver:
+            self._saver = RedisSaver.from_conn_string(self._redis_url).__enter__()
             
-#             self._saver.setup()
-#         return self._saver
+            self._saver.setup()
+        return self._saver
     
-#     def delete_by_thread(self, thread_id: str):
-#         prefixes = ["checkpoint:", "checkpoint_blob:", "checkpoint_write:"]
-#         for prefix in prefixes:
-#             key = f"{prefix}{thread_id}"
-#             self._redis.delete(key)
+    def delete_by_thread(self, thread_id: str):
+        prefixes = ["checkpoint:", "checkpoint_blob:", "checkpoint_write:"]
+        for prefix in prefixes:
+            key = f"{prefix}{thread_id}"
+            self._redis.delete(key)
 
-#     def close(self):
-#         if self._saver:
-#             self._saver.__exit__(None, None, None)
-#             self._saver = None
+    def close(self):
+        if self._saver:
+            self._saver.__exit__(None, None, None)
+            self._saver = None
 
 class PineconeDatabase:
     def __init__(self):
@@ -83,12 +117,9 @@ class PineconeDatabase:
             )
         return self._pc.Index(self._index_name)
     
-# def test_connection():
-#     db = PineconeDatabase()
-#     db.create_index()
-#     db = db.connect()
-#     print("✅ Kết nối thành công! Dữ liệu từ database:")
-#     print(db)
+def test_connection():
+    db = PostgresDatabase()
+    db.test_connection()
 
-# if __name__ == "__main__":
-#     test_connection()
+if __name__ == "__main__":
+    test_connection()
