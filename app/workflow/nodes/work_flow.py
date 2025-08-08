@@ -16,13 +16,22 @@ class FlowGraph:
         graph_builder = StateGraph(state_schema=State)
     
         # Add các node
+        graph_builder.add_node("evaluate_history", nodes.evaluate_history)
         graph_builder.add_node("route", nodes.route)
         graph_builder.add_node("tools", nodes.using_tools)
         graph_builder.add_node("order", nodes.order)
         graph_builder.add_node("generate", nodes.generate)
 
         # Set entry point
-        graph_builder.set_entry_point("route") 
+        graph_builder.set_entry_point("evaluate_history") 
+        graph_builder.add_conditional_edges(
+            "evaluate_history",
+            lambda state: state.next_state,
+            {
+                "route": "route",
+                "generate": "generate"
+            }
+        )
 
         # Định nghĩa các conditional edges từ router
         graph_builder.add_conditional_edges(

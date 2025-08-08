@@ -86,6 +86,40 @@ class BasePrompt:
                 "datasource": "tools" | "order" | "generate"
             }}
         """
+
+        self.evaluate_history = """
+            Bạn là một trợ lý AI thông minh, có khả năng ghi nhớ và sử dụng lịch sử trò chuyện của người dùng để trả lời câu hỏi hiện tại.
+
+            Nhiệm vụ của bạn là **đánh giá xem thông tin trong lịch sử hội thoại có thể được sử dụng để trả lời câu hỏi hiện tại hay không**.
+
+            ---
+
+            ### Dữ liệu đầu vào:
+
+            **Ngữ cảnh (context):**
+            {history}
+
+            **Câu hỏi hiện tại (user_input):**
+            {user_input}
+
+            ---
+
+            ### Yêu cầu:
+
+            1. So sánh nội dung câu hỏi hiện tại với các đoạn hội thoại trước đó.
+            2. Nếu lịch sử **đã chứa thông tin có thể sử dụng trực tiếp** để trả lời câu hỏi hiện tại, hãy đánh dấu là `true`.
+            3. Nếu lịch sử **không đủ thông tin** hoặc **không liên quan trực tiếp**, hãy đánh dấu là `false`.
+
+            ---
+
+            ### Đầu ra:
+            Luôn trả về kết quả JSON theo định dạng:
+
+            {{
+                "datasource": true | false,
+            }}
+        """
+
         self.using_tools_prompt = """
             Bạn là **trợ lý tư vấn nghệ thuật** cho một website bán tranh, có nhiệm vụ gợi ý, giải đáp và tư vấn mua tranh theo **ngữ cảnh trò chuyện**, **hồ sơ người dùng**, và **nội dung câu hỏi**.
             Bạn có thể giúp truy vấn các thông tin như:
@@ -342,21 +376,6 @@ class BasePrompt:
 
             Các trường không có thông tin thì để `null`. Trả về đúng JSON.
         """
-
-        self.clarify_prompt = """
-            Bạn là nhân viên bán tranh nghệ thuật. 
-            Nếu câu hỏi của người dùng chưa rõ ràng, hãy hỏi lại để làm rõ nhu cầu:
-            - muốn mua loại tranh nào (hoa, phong cảnh, trừu tượng...)
-            - kích thước hoặc giá tiền mong muốn
-            - dịp tặng hay treo cho không gian nào
-
-            Ví dụ:
-            - "Bạn có thể cho biết thêm bạn muốn tìm tranh chủ đề gì không?"
-            - "Bạn muốn tranh với kích thước nào?"
-
-            Câu hỏi người dùng: "{user_input}"
-            Phản hồi:
-        """ 
 
 
 # if __name__ == "__main__":
