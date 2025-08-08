@@ -106,7 +106,6 @@ class Chat:
             """
             Tìm kiếm thông tin đơn hàng.
             """
-            # chưa lấy được order_id từ state
             if (state.user_id is None):
                state.final_generation = "Vui lòng cung cấp ID người dùng để lấy thông tin đơn hàng."
             else:

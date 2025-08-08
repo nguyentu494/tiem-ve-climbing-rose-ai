@@ -108,14 +108,15 @@ class BasePrompt:
             1. Nếu lịch sử chứa thông tin có thể sử dụng trực tiếp → "datasource": true
             2. Nếu không đủ thông tin hoặc không liên quan → "datasource": false
             3. Chỉ trả về JSON, không được thêm giải thích, không kèm câu trả lời gốc, không ghi thêm bất kỳ ký tự nào ngoài JSON.
-            4. JSON phải đúng cú pháp Python boolean (`true` / `false` viết thường).
+            4. JSON phải đúng cú pháp Python boolean (`true` / `false` viết thường)
+            5. Nếu câu hỏi yêu cầu thông tin cá nhân, lịch sử, đơn hàng cụ thể, tranh khác, chương trình hiện tại có liên quan, khuyến mãi,... → "datasource": false.
 
             ---
 
             ### Đầu ra hợp lệ duy nhất:
             Ví dụ:
             {{
-                "datasource": true
+                "datasource": true | false
             }}
         """
 

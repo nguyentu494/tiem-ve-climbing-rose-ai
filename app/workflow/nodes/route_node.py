@@ -132,13 +132,14 @@ class RouteNode:
             "order_painting": self._prompt.order_prompt,
             "get_size_available": self._prompt.size_prompt,
             "get_category_available": self._prompt.category_prompt,
-            "get_coupon_available": self._prompt.coupon_prompt,
+            "get_coupons_available": self._prompt.coupon_prompt,
         }
 
         prompt_template = prompt_map.get(tool_call['name'], self._prompt.generate_prompt)
 
         convert_prompt = prompt_template.format(
             tool_run=final_result,
+            history=state.context,
             question=state.user_input
         )
 
