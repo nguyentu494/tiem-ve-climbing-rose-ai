@@ -29,7 +29,8 @@ class FlowGraph:
             lambda state: state.next_state,
             {
                 "route": "route",
-                "generate": "generate"
+                "generate": "generate",
+                "end": END  
             }
         )
 

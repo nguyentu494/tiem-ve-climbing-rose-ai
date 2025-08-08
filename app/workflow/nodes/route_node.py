@@ -73,19 +73,36 @@ class RouteNode:
         return state
 
     def evaluate_history(self, state: State):
-        self.similarity_search(state)
+        similar_answer = self.similarity_search(state)
+        if similar_answer and similar_answer.similarity >= 0.95:
+            state.final_generation = similar_answer.answer
+            state.next_state = "end" 
+            return state
+
         prompt = self._prompt.evaluate_history.format(
             user_input=state.user_input,
             history=state.context,
         )
+
         decision = self._llm.invoke([
             SystemMessage(content=prompt),
-            *state.chat_history,
+            *state.chat_history,  
             HumanMessage(content=state.user_input),
         ])
-        result = self._ai_to_json(decision)
+
+        try:
+            result = self._ai_to_json(decision)
+        except InvalidInputException:
+            result = None
+
+        if not result or not isinstance(result, dict):
+            state.final_generation = decision.content
+            state.next_state = "end"
+            return state
+
         state.next_state = "generate" if result.get("datasource") in [True, "true"] else "route"
         return state
+
 
     def using_tools(self, state: State):
         if not state.user_input or not isinstance(state.user_input, str) or not state.user_input.strip():
