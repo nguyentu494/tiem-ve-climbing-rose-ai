@@ -88,38 +88,37 @@ class BasePrompt:
         """
 
         self.evaluate_history = """
-            Bạn là một trợ lý AI thông minh, có khả năng ghi nhớ và sử dụng lịch sử trò chuyện của người dùng để trả lời câu hỏi hiện tại.
+            Bạn là một AI chỉ được phép trả lời bằng JSON.
 
-            Nhiệm vụ của bạn là **đánh giá xem thông tin trong lịch sử hội thoại có thể được sử dụng để trả lời câu hỏi hiện tại hay không**.
+            Nhiệm vụ: Đánh giá xem thông tin trong lịch sử hội thoại có thể dùng để trả lời câu hỏi hiện tại hay không.
 
             ---
 
             ### Dữ liệu đầu vào:
 
-            **Ngữ cảnh (context):**
+            Ngữ cảnh (context):
             {history}
 
-            **Câu hỏi hiện tại (user_input):**
+            Câu hỏi hiện tại (user_input):
             {user_input}
 
             ---
 
-            ### Yêu cầu:
-
-            1. So sánh nội dung câu hỏi hiện tại với các đoạn hội thoại trước đó.
-            2. Nếu lịch sử **đã chứa thông tin có thể sử dụng trực tiếp** để trả lời câu hỏi hiện tại, hãy đánh dấu là `true`.
-            3. Nếu lịch sử **không đủ thông tin** hoặc **không liên quan trực tiếp**, hãy đánh dấu là `false`.
-            4. Tuyệt đối không được trả lời sai với định dạng đầu đã được quy định.
+            ### Quy tắc bắt buộc:
+            1. Nếu lịch sử chứa thông tin có thể sử dụng trực tiếp → "datasource": true
+            2. Nếu không đủ thông tin hoặc không liên quan → "datasource": false
+            3. Chỉ trả về JSON, không được thêm giải thích, không kèm câu trả lời gốc, không ghi thêm bất kỳ ký tự nào ngoài JSON.
+            4. JSON phải đúng cú pháp Python boolean (`true` / `false` viết thường).
 
             ---
 
-            ### Đầu ra:
-            Luôn trả về kết quả JSON theo định dạng:
-
+            ### Đầu ra hợp lệ duy nhất:
+            Ví dụ:
             {{
-                "datasource": true | false,
+                "datasource": true
             }}
         """
+
 
         self.using_tools_prompt = """
             Bạn là **trợ lý tư vấn nghệ thuật** cho một website bán tranh, có nhiệm vụ gợi ý, giải đáp và tư vấn mua tranh theo **ngữ cảnh trò chuyện**, **hồ sơ người dùng**, và **nội dung câu hỏi**.
