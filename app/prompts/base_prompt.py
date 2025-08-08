@@ -109,6 +109,7 @@ class BasePrompt:
             1. So sánh nội dung câu hỏi hiện tại với các đoạn hội thoại trước đó.
             2. Nếu lịch sử **đã chứa thông tin có thể sử dụng trực tiếp** để trả lời câu hỏi hiện tại, hãy đánh dấu là `true`.
             3. Nếu lịch sử **không đủ thông tin** hoặc **không liên quan trực tiếp**, hãy đánh dấu là `false`.
+            4. Tuyệt đối không được trả lời sai với định dạng đầu đã được quy định.
 
             ---
 
