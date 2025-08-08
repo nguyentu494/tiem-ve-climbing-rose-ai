@@ -73,11 +73,7 @@ class RouteNode:
         return state
 
     def evaluate_history(self, state: State):
-        similar_answer = self.similarity_search(state)
-        if similar_answer and similar_answer.similarity >= 0.95:
-            state.final_generation = similar_answer.answer
-            state.next_state = "end" 
-            return state
+        
 
         prompt = self._prompt.evaluate_history.format(
             user_input=state.user_input,
