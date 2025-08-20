@@ -117,7 +117,7 @@ class RouteNode:
         if not result.tool_calls or len(result.tool_calls) == 0:
             raise InvalidInputException("No tool calls found in the AI response. Please check the input or model configuration.")
         tool_call = result.tool_calls[0]
-        tool_call['args']['state']['user_input'] = state.user_input
+        tool_call = self._normalize_tool_args(tool_call)
 
         ai_msg = AIMessage(
             content=result.content,
@@ -213,3 +213,18 @@ class RouteNode:
             role=MessageRole.AI,
             content=state.final_generation
         ))
+
+    def normalize_tool_args(tool_call):
+        args = tool_call.get("args", {})
+        state = args.get("state", {})
+
+        # Bỏ chat_history vì LLM có lúc nhồi list object vào
+        if "chat_history" in state:
+            state.pop("chat_history")
+
+        # Nếu cần bạn có thể filter thêm field không mong muốn khác
+        # state = {k: v for k, v in state.items() if k in {"user_id", "user_input", "search_params"}}
+
+        args["state"] = state
+        tool_call["args"] = args
+        return tool_call
