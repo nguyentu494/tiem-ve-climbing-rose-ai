@@ -47,7 +47,6 @@ class PostgresDatabase:
         return self._Session()
 
     def save_message(self, message: ChatMessage):
-        print(f"Saving message: {message.content} with role {message.role} for user {message.user_id}")
         session = self.get_session()
         try:
             session.add(message)

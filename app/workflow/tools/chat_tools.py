@@ -22,24 +22,36 @@ class Chat:
             """
             Bước trích xuất từ khóa tìm kiếm từ user_input và lưu vào state.
             """
+            try:
+                print("User",state)
 
-            print("User Input:", state.user_input)
+                extract_keywords_prompt = self._prompt.extract_keywords.format(
+                    question=state.user_input,
+                )
 
-            self._prompt.extract_keywords = self._prompt.extract_keywords.format(
-                question=state.user_input,
-            ) 
+                model_with_structure = self._llm.with_structured_output(SearchParams)
 
+                result = model_with_structure.invoke([
+                    SystemMessage(content=extract_keywords_prompt),
+                    HumanMessage(content=state.user_input),
+                ])
 
-            model_with_structure = self._llm.with_structured_output(SearchParams)
+                state.search_params = result
+                return state
 
-            result = model_with_structure.invoke([
-                SystemMessage(content=self._prompt.extract_keywords),
-                HumanMessage(content=state.user_input),
-            ])
+            except Exception as e:
+                # Log lỗi ra console
+                print(f"[extract_keywords] Error: {e}")
 
-            state.search_params = result
+                # Ghi lỗi vào state để tiện debug downstream
+                state.search_params = None
+                state.final_generation = (
+                    "⚠️ Đã xảy ra lỗi khi trích xuất từ khóa tìm kiếm. "
+                    "Vui lòng thử lại sau."
+                )
+                state.error.append(str(e))
+                return state
 
-            return state
         
         @tool
         def search_paintings_by_keyword(state: State):
@@ -48,6 +60,7 @@ class Chat:
             Trả về danh sách tranh phù hợp với các tiêu chí tìm kiếm.
             """
             print("Search Params:", state)
+            
             state = extract_keywords(state)
 
             if not state.search_params:
