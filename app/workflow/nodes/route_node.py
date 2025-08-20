@@ -117,7 +117,7 @@ class RouteNode:
         if not result.tool_calls or len(result.tool_calls) == 0:
             raise InvalidInputException("No tool calls found in the AI response. Please check the input or model configuration.")
         tool_call = result.tool_calls[0]
-        tool_call = self._normalize_tool_args(tool_call)
+        tool_call = self.normalize_tool_args(tool_call)
 
         ai_msg = AIMessage(
             content=result.content,
@@ -214,7 +214,7 @@ class RouteNode:
             content=state.final_generation
         ))
 
-    def normalize_tool_args(tool_call):
+    def normalize_tool_args(self, tool_call):
         args = tool_call.get("args", {})
         state = args.get("state", {})
 
