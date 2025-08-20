@@ -151,7 +151,7 @@ class BasePrompt:
             "Xin lỗi, hiện tại không có bức tranh nào phù hợp với yêu cầu của bạn. Bạn có muốn xem thêm các bức tranh khác không?"
 
             ****** Lưu ý: Trả về kết quả dưới dạng được yêu cầu và phải trả lại đúng chính xác dữ liệu không sửa giá trị *****
-
+            Mã tranh(`painting_id`)
             Mỗi bức tranh cần hiển thị:
             - Tên tranh (`title`)
             - Mô tả (`description`)
@@ -160,7 +160,7 @@ class BasePrompt:
             - Kích thước (`size`)
             - Ảnh (`image_url`): ![Preview](`image_url`)
             - Thời gian đăng bán (`created_at`)
-            - Link xem chi tiết: `[Xem chi tiết](https://climpingrose.com/paintings/slug)` với `slug` là mã tranh thực tế.
+            - Link xem chi tiết: `[Xem chi tiết](https://climpingrose.com/paintings/painting_id)` với `painting_id` là mã tranh thực tế.
 
             Trình bày thông tin một cách rõ ràng, tự nhiên, thân thiện và dễ đọc. Viết như một nhân viên tư vấn đang hỗ trợ khách chọn tranh nghệ thuật phù hợp.
 
@@ -305,9 +305,10 @@ class BasePrompt:
             - Tên loại tranh (`name`)
             - Mô tả (`description`)
             - Hình ảnh minh họa (`image_url`): ![Preview](`image_url`)
-            - Link xem các tranh thuộc loại này: `[Xem tranh](https://climpingrose.com/paintings?category=slug)` với `slug` là mã loại tranh (category_id).
+            - ### Lưu ý đặc biệt: Link xem các tranh thuộc loại này: `[Xem tranh](https://climpingrose.com/paintings?category=category_id)` với `category_id` là mã loại tranh (category_id).
             Nhiệm vụ của bạn:
             - Trả lời tự nhiên, thân thiện, đáng yêu và dễ thương như nhân viên chăm sóc khách hàng.
+            - Không cần dãn dòng quá nhiều
             - Cho biết hiện tại có bao nhiêu loại tranh đang có trong cửa hàng.
             - Liệt kê đầy đủ các loại tranh theo định dạng dễ đọc, bao gồm tên
         """
