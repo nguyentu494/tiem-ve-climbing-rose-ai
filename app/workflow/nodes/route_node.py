@@ -69,12 +69,37 @@ class RouteNode:
             SystemMessage(content=self._prompt.route_instructions),
             HumanMessage(content=state.user_input),
         ])
+
         state.next_state = self._ai_to_json(decision).get("datasource")
-        return state
+
+        if state.next_state == "tools" and not state.is_relevant:
+            return {"next_state": "generate"}
+
+        return {"next_state": state.next_state}
+
+    def summarize_history(self, state: State):
+        try:
+            summarize_prompt = self._prompt.summarize_history
+
+            result = self._llm.invoke([
+                SystemMessage(content=summarize_prompt),
+                *state.chat_history,
+                HumanMessage(content=state.user_input),
+            ])
+
+            state.context = result.content.strip() if hasattr(result, "content") else str(result)
+
+            if not state.context:
+                state.context = "Không có thông tin tranh cụ thể."
+            return state
+
+        except Exception as e:
+            state.context = "Không có thông tin tranh cụ thể."
+            state.error.append(str(e))
+            return state
+
 
     def evaluate_history(self, state: State):
-        
-
         prompt = self._prompt.evaluate_history.format(
             user_input=state.user_input,
             history=state.context,
@@ -96,7 +121,7 @@ class RouteNode:
             state.next_state = "end"
             return state
 
-        state.next_state = "generate" if result.get("datasource") in [True, "true"] else "route"
+        state.next_state = "generate" if result.get("datasource") in [True, "true"] else "summarize_history"
         return state
 
 
@@ -106,7 +131,7 @@ class RouteNode:
 
         tool_prompt = self._prompt.using_tools_prompt.format(
             user_id=state.user_id,
-            user_input=state.user_input
+            user_input=state.user_input,
         )
 
         result = self._llm_bind_tools.invoke([
@@ -115,9 +140,15 @@ class RouteNode:
         ])
 
         if not result.tool_calls or len(result.tool_calls) == 0:
-            raise InvalidInputException("No tool calls found in the AI response. Please check the input or model configuration.")
+            state.error.append("No tool calls found in the result.")
+            state.final_generation = "Không tìm thấy thông tin phù hợp."
+            return state
         tool_call = result.tool_calls[0]
         tool_call = self.normalize_tool_args(tool_call)
+        tool_call = self.normalize_keywords(tool_call, state)
+
+        # print("Cleaned keywords:", tool_call["args"]["keyword"])
+
 
         ai_msg = AIMessage(
             content=result.content,
@@ -133,6 +164,8 @@ class RouteNode:
             "get_size_available": self._prompt.size_prompt,
             "get_category_available": self._prompt.category_prompt,
             "get_coupons_available": self._prompt.coupon_prompt,
+            "search_popular_paintings": self._prompt.search_paintings_prompt,
+            "get_price_available": self._prompt.price_prompt
         }
 
         prompt_template = prompt_map.get(tool_call['name'], self._prompt.generate_prompt)
@@ -140,14 +173,15 @@ class RouteNode:
         convert_prompt = prompt_template.format(
             tool_run=final_result,
             history=state.context,
-            question=state.user_input
+            question=state.user_input,
+            context=state.context
         )
 
         generation = self._llm.invoke([
             SystemMessage(content=convert_prompt),
-            *state.chat_history,
             HumanMessage(content=state.user_input),
         ])
+
 
         state.final_generation = generation.content
         state.chat_history += [HumanMessage(content=state.user_input), generation]
@@ -169,6 +203,7 @@ class RouteNode:
             *state.chat_history,
             HumanMessage(content=state.user_input),
         ])
+
 
         state.final_generation = generation.content
         state.chat_history += [HumanMessage(content=state.user_input), generation]
@@ -228,3 +263,54 @@ class RouteNode:
         args["state"] = state
         tool_call["args"] = args
         return tool_call
+
+    def is_context_relevant(self, state: State) -> bool:
+        check_prompt = self._prompt.check_context_relevance.format(
+            context=state.context or "Không có",
+            question=state.user_input
+        )
+
+        result = self._llm.invoke([
+            SystemMessage(content=check_prompt),
+            HumanMessage(content=state.user_input),
+        ])
+
+        answer = result.content.strip().lower()
+        if answer == "yes":
+            state.is_relevant = True
+        else:
+            state.is_relevant = False
+        return state
+
+    def normalize_keywords(self, tool_call, state):
+        """
+        Chuẩn hóa keyword trong tool_call:
+        - Bỏ stopword 'tranh', 'bức tranh' ở đầu.
+        - Nếu không có keyword mới thì fallback sang state.last_keywords.
+        - Nếu tool không có args.keyword thì bỏ qua.
+        """
+        def clean_kw(kw: str) -> str:
+            kw = kw.strip()
+            # bỏ "tranh" hoặc "bức tranh" ở đầu (case-insensitive)
+            kw = re.sub(r'^(tranh|bức tranh)\s+', '', kw, flags=re.IGNORECASE)
+            return kw.strip()
+
+        # Nếu tool không có args hoặc không có keyword thì bỏ qua
+        if not tool_call.get("args") or "keyword" not in tool_call["args"]:
+            return tool_call  
+
+        new_keywords = tool_call["args"].get("keyword", [])
+        if isinstance(new_keywords, str):
+            new_keywords = [new_keywords]
+
+        clean_keywords = [clean_kw(kw) for kw in new_keywords if clean_kw(kw)]
+
+        if clean_keywords:
+            state.last_keywords = clean_keywords
+            tool_call["args"]["keyword"] = clean_keywords
+        else:
+            if state.last_keywords:
+                tool_call["args"]["keyword"] = state.last_keywords
+
+        return tool_call
+

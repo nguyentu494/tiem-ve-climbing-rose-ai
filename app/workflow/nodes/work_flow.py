@@ -17,6 +17,8 @@ class FlowGraph:
     
         # Add các node
         graph_builder.add_node("evaluate_history", nodes.evaluate_history)
+        graph_builder.add_node("summarize_history", nodes.summarize_history)
+        graph_builder.add_node("check_relevant", nodes.is_context_relevant)
         graph_builder.add_node("route", nodes.route)
         graph_builder.add_node("tools", nodes.using_tools)
         graph_builder.add_node("order", nodes.order)
@@ -28,11 +30,14 @@ class FlowGraph:
             "evaluate_history",
             lambda state: state.next_state,
             {
-                "route": "route",
+                "summarize_history": "summarize_history",
                 "generate": "generate",
                 "end": END  
             }
         )
+
+        graph_builder.add_edge("summarize_history", "check_relevant")
+        graph_builder.add_edge("check_relevant", "route")
 
         # Định nghĩa các conditional edges từ router
         graph_builder.add_conditional_edges(
@@ -91,6 +96,7 @@ class FlowGraph:
             context=[],
             error=[],
             next_state="route",
+            is_relevant=True,
             loop_step=0,
             user_id=chat_request.user_id,
             search_params=SearchParams(
@@ -109,4 +115,3 @@ if __name__ == "__main__":
     flow_graph = FlowGraph()
     # Example run
     result = flow_graph.run("Tìm tranh cô gái")
-    print(result)

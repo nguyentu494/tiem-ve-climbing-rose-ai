@@ -12,6 +12,8 @@ class State(BaseModel):
     context: List[str] | str = ""
     final_generation: str = ""
     error: List[str] = Field(default_factory=list)
+    is_relevant: bool = True
     next_state: str = ""
     user_id: str = ""
+    last_keywords: List[str] = []  
     search_params: SearchParams = Field(default_factory=SearchParams)
