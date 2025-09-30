@@ -76,8 +76,11 @@ class RedisDatabase:
     def connect(self) -> BaseCheckpointSaver:
         if not self._saver:
             self._saver = RedisSaver.from_conn_string(self._redis_url).__enter__()
-            
-            self._saver.setup()
+            try:
+                self._saver._client.ft("checkpoints").info()
+            except Exception as e:
+                if "no such index" in str(e).lower():
+                    self._saver.setup()  # chỉ tạo nếu chưa có
         return self._saver
     
     def delete_by_thread(self, thread_id: str):
