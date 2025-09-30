@@ -16,48 +16,48 @@ class FlowGraph:
         graph_builder = StateGraph(state_schema=State)
     
         # Add các node
-        # graph_builder.add_node("evaluate_history", nodes.evaluate_history)
-        # graph_builder.add_node("summarize_history", nodes.summarize_history)
-        # graph_builder.add_node("check_relevant", nodes.is_context_relevant)
-        # graph_builder.add_node("route", nodes.route)
-        # graph_builder.add_node("tools", nodes.using_tools)
-        # graph_builder.add_node("order", nodes.order)
+        graph_builder.add_node("evaluate_history", nodes.evaluate_history)
+        graph_builder.add_node("summarize_history", nodes.summarize_history)
+        graph_builder.add_node("check_relevant", nodes.is_context_relevant)
+        graph_builder.add_node("route", nodes.route)
+        graph_builder.add_node("tools", nodes.using_tools)
+        graph_builder.add_node("order", nodes.order)
         graph_builder.add_node("generate", nodes.generate)
 
         # Set entry point
-        # graph_builder.set_entry_point("evaluate_history") 
-        # graph_builder.add_conditional_edges(
-        #     "evaluate_history",
-        #     lambda state: state.next_state,
-        #     {
-        #         "summarize_history": "summarize_history",
-        #         "generate": "generate",
-        #         "end": END  
-        #     }
-        # )
+        graph_builder.set_entry_point("evaluate_history") 
+        graph_builder.add_conditional_edges(
+            "evaluate_history",
+            lambda state: state.next_state,
+            {
+                "summarize_history": "summarize_history",
+                "generate": "generate",
+                "end": END  
+            }
+        )
 
-        # graph_builder.add_edge("summarize_history", "check_relevant")
-        # graph_builder.add_edge("check_relevant", "route")
+        graph_builder.add_edge("summarize_history", "check_relevant")
+        graph_builder.add_edge("check_relevant", "route")
 
-        # # Định nghĩa các conditional edges từ router
-        # graph_builder.add_conditional_edges(
-        #     "route",
-        #     lambda state: state.next_state,
-        #     {
-        #         "tools": "tools",
-        #         "order": "order",
-        #         "generate": "generate"
-        #     }
-        # )
+        # Định nghĩa các conditional edges từ router
+        graph_builder.add_conditional_edges(
+            "route",
+            lambda state: state.next_state,
+            {
+                "tools": "tools",
+                "order": "order",
+                "generate": "generate"
+            }
+        )
 
-        # # Định nghĩa các edges khác không liên quan đến router
-        # graph_builder.add_edge("tools", END)
-        # graph_builder.add_edge("order", END)
+        # Định nghĩa các edges khác không liên quan đến router
+        graph_builder.add_edge("tools", END)
+        graph_builder.add_edge("order", END)
         graph_builder.add_edge("generate", END)
 
-        # self._graph = graph_builder.compile(checkpointer=self._checkpointer)
+        self._graph = graph_builder.compile(checkpointer=self._checkpointer)
 
-        self._graph = graph_builder.compile()
+        # self._graph = graph_builder.compile()
 
     def __close__(self):
         self._redis_db.close()
@@ -73,12 +73,11 @@ class FlowGraph:
                 "thread_id": chat_request.user_id,
             }
         }
+
+
         # state.chat_history = 
-        try:
-            saved_chat_history = self._checkpointer.get(thread_id) or {}
-        except Exception as e:
-            print("⚠️ Không lấy được checkpoint:", e)
-            saved_chat_history = {}       
+        saved_chat_history = self._checkpointer.get(thread_id) or {}
+        # print("Saved Chat History:", saved_chat_history)
         channel_values = saved_chat_history.get("channel_values", {})
         history = channel_values.get("chat_history", [])
 
