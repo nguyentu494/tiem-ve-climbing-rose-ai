@@ -12,6 +12,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from app.models.message import ChatMessage
 from app.database.base import engine
+from redis import from_url
+from redis.exceptions import ResponseError
 
 load_dotenv()
 
@@ -68,31 +70,49 @@ class PostgresDatabase:
             raise RuntimeError(f"❌ Không thể kiểm tra kết nối: {e}")
 
 
+from contextlib import ExitStack
+from redis import from_url
+from redis.exceptions import ResponseError
+from langgraph.checkpoint.redis import RedisSaver
+
 class RedisDatabase:
     def __init__(self):
-        self._redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        self._redis_url = os.getenv("REDIS_URL")
+        self._stack = ExitStack()
         self._saver = None
 
-    def connect(self) -> BaseCheckpointSaver:
+    def connect(self):
         if not self._saver:
-            self._saver = RedisSaver.from_conn_string(self._redis_url).__enter__()
-            try:
-                self._saver._client.ft("checkpoints").info()
-            except Exception as e:
-                if "no such index" in str(e).lower():
-                    self._saver.setup()  # chỉ tạo nếu chưa có
+            # GIỮ context mở suốt vòng đời process
+            self._saver = self._stack.enter_context(
+                RedisSaver.from_conn_string(self._redis_url)
+            )
+            # tạo index nếu chưa có (idempotent)
+            self._saver.setup()
+        # bảo hiểm: ai đó vừa drop thì tạo lại ngay
+        self.ensure_index_alive()
         return self._saver
-    
-    def delete_by_thread(self, thread_id: str):
-        prefixes = ["checkpoint:", "checkpoint_blob:", "checkpoint_write:"]
-        for prefix in prefixes:
-            key = f"{prefix}{thread_id}"
-            self._redis.delete(key)
+
+    def ensure_index_alive(self):
+        r = from_url(self._redis_url)  # ví dụ: redis://:pass@127.0.0.1:6379/0
+        try:
+            r.ft("checkpoints").info()
+        except ResponseError as e:
+            msg = str(e).lower()
+            if "unknown index name" in msg or "no such index" in msg:
+                try:
+                    self._saver.setup()  # tạo lại; không xoá dữ liệu
+                except ResponseError as ee:
+                    # nếu race condition: "already exists" thì bỏ qua
+                    if "already exists" not in str(ee).lower():
+                        raise
+            else:
+                raise
 
     def close(self):
-        if self._saver:
-            self._saver.__exit__(None, None, None)
-            self._saver = None
+        self._stack.close()
+        self._saver = None
+
 
 class PineconeDatabase:
     def __init__(self):
